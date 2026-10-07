@@ -8,6 +8,7 @@ from typing import Annotated, Optional, Literal
 app = FastAPI()
 
 
+# ===================== User Master Data Validation =================================
 # Validation for overall user data
 class Users(BaseModel):
     Id: Annotated[int, Field(..., description="Primary key of the user table")]
@@ -38,6 +39,15 @@ class UpdateUser(BaseModel):
         return name
 
 
+# ===================== Product Master Data Validation =================================
+
+class Products(BaseModel):
+    Id: Annotated[int, Field(..., description="Primary key of product table")]
+    ProductCode: Annotated[str, Field(..., description="Unique of Products")]
+    ProductName: Annotated[str, Field(..., description="Name of the Product")]
+    Stock: Annotated[int, Field(..., gt=0, description="Stock of respective Product")]
+
+# ===================== User End-Points ================================================
 
 def connection():
     conn = sqlite3.connect('inventorysystem.db')
@@ -112,3 +122,15 @@ def delete_user(
         conn.close()
 
     return JSONResponse(status_code=200, content={'message': 'User has been deleted.'})
+
+
+
+# ===================== Product End-Points ================================================
+
+
+@app.get('/product')
+def products():
+    conn = connection()
+    rows = conn.execute("select * from product").fetchall()
+    return [Products(**dict(row)).model_dump() for row in rows]
+    
