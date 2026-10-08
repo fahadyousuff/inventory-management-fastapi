@@ -47,6 +47,21 @@ class Products(BaseModel):
     ProductName: Annotated[str, Field(..., description="Name of the Product")]
     Stock: Annotated[int, Field(..., gt=0, description="Stock of respective Product")]
 
+
+class AddProduct(BaseModel):
+    ProductName: Annotated[str, Field(..., description="Name of the Product")]
+    Stock: Annotated[int, Field(..., gt=0, description="Stock of respective Product")]
+
+    @field_validator('ProductName')
+    @classmethod
+    def valid_product(cls, value):
+        valid_product = value.title()
+        return valid_product
+
+class UpdateProduct(BaseModel):
+    ProductName: Annotated[Optional[str], Field(default=None)]
+    Stock: Annotated[Optional[int], Field(default=None)]
+
 # ===================== User End-Points ================================================
 
 def connection():
@@ -134,3 +149,24 @@ def products():
     rows = conn.execute("select * from product").fetchall()
     return [Products(**dict(row)).model_dump() for row in rows]
     
+
+@app.post('/createproduct')
+def create_product(product: AddProduct):
+    conn = connection()
+    try:
+        conn.execute("""
+        INSERT INTO product(ProductName, Stock)
+        VALUES (?, ?)
+        """,
+        (product.ProductName, product.Stock)
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="Product already exists.")
+    finally:
+        conn.close()
+    return JSONResponse(status_code=200, content={'message': "Product has been added."})
+
+@app.put('/edit/{product_id}')
+def update_product(product_id: int, product: UpdateProduct):
+    pass
