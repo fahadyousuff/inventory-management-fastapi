@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Path
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator, computed_field, Field
 from typing import Annotated, Optional, Literal
+import secrets
 
 app = FastAPI()
 
@@ -90,13 +91,14 @@ def users():
 
 @app.post('/createuser')
 def create_user(user: AddUser):
+    token = secrets.token_hex(32)
     conn = connection()
     try:
         conn.execute("""
-        INSERT INTO users (name)
-        VALUES(?)
+        INSERT INTO users (name, ApiToken)
+        VALUES(?,?)
         """,
-        (user.name,)
+        (user.name, token)
         )
         conn.commit()
     except sqlite3.IntegrityError:
