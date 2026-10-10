@@ -1,13 +1,15 @@
 import pandas as pd
 import sqlite3
-from fastapi import FastAPI, HTTPException, Path
+from fastapi import FastAPI, HTTPException, Path, Header, Depends
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, field_validator, computed_field, Field
 from typing import Annotated, Optional, Literal
 import secrets
 
-app = FastAPI()
 
+app = FastAPI()
+bearer_scheme = HTTPBearer()
 
 # ===================== User Master Data Validation =================================
 # Validation for overall user data
@@ -76,6 +78,19 @@ def connection():
     # for accessing the tables
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    token = creds.credentials
+
+    conn = connection()
+    try:
+        row = conn.execute("select * from users where ApiToken = ?",(token,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Invalid Token.")
+        return dict(row)
+    finally:
+        conn.close()
 
 
 @app.get('/')
@@ -215,3 +230,9 @@ def delete_product(
         conn.close()
 
     return JSONResponse(status_code=200, content={'message': 'Product has been deleted.'})
+
+
+
+@app.get('/whoami')
+def whoami(user = Depends(get_current_user)):
+    return {"id": user['Id'], "name": user['name']}
