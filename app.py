@@ -71,12 +71,35 @@ class UpdateProduct(BaseModel):
         valid_product = value.title()
         return valid_product
 
-# ===================== User End-Points ================================================
+
+# ===================== Sales Validation =================================
+
+class Sales(BaseModel):
+    Id : Annotated[int, Field(..., description="Unique ID of sales transaction")]
+    UserId : Annotated[int, Field(..., description="User ID of sales person in the sales transaction")]
+    ProductId : Annotated[int, Field(..., description="ID of the product in the sales transaction")]
+    Quantity : Annotated[int, Field(..., description="Quantity of material requested from the customer")]
+
+
+
+class AddSales(BaseModel):
+    ProductName : Annotated[str, Field(..., description="Name of the product being posting in the sales")]
+    Quantity : Annotated[int, Field(..., gt=0, description="Quantity of material requested from the customer")]
+
+    @field_validator('ProductName')
+    @classmethod
+    def valid_product(cls, value):
+        product = value.title()
+        return product
+
+
+# ===================== Helper Functions ================================================
 
 def connection():
     conn = sqlite3.connect('inventorysystem.db')
     # for accessing the tables
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
@@ -92,6 +115,11 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer_scheme
     finally:
         conn.close()
 
+
+
+
+
+# ===================== User End-Points ================================================
 
 @app.get('/')
 def home():
@@ -236,3 +264,34 @@ def delete_product(
 @app.get('/whoami')
 def whoami(user = Depends(get_current_user)):
     return {"id": user['Id'], "name": user['name']}
+
+
+
+# ===================== Sales End-Points ================================================
+
+@app.get('/sales')
+def show_sales():
+    conn = connection()
+    rows = conn.execute("select * from sales").fetchall()
+    return [Sales(**dict(row)).model_dump() for row in rows]
+
+
+@app.post('/addsales')
+def create_sales(sales: AddSales, user = Depends(get_current_user)):
+    conn = connection()
+    try:
+        product = conn.execute("select Id from product where ProductName = ?",(sales.ProductName,)).fetchone()
+        if product is None:
+            raise HTTPException(status_code=404, detail="Product not available in Inventory.")
+        conn.execute("""
+        INSERT INTO sales (UserId, ProductId, Quantity)
+        VALUES (?, ?, ?)
+        """,
+        (user["Id"], product["Id"], sales.Quantity)
+        )
+        conn.commit()
+    except sqlite3.IntegrityError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        conn.close()
+    return JSONResponse(status_code=200, content={'message': 'Sales Transaction has been added.'})
