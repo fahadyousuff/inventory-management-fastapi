@@ -93,6 +93,17 @@ class AddSales(BaseModel):
         return product
 
 
+class UpdateSales(BaseModel):
+    ProductName : Annotated[Optional[str], Field(default=None)]
+    Quantity : Annotated[Optional[int], Field(default=None)]
+
+    @field_validator('ProductName')
+    @classmethod
+    def valid_product(cls, value):
+        product = value.title()
+        return product
+
+
 # ===================== Helper Functions ================================================
 
 def connection():
@@ -295,3 +306,39 @@ def create_sales(sales: AddSales, user = Depends(get_current_user)):
     finally:
         conn.close()
     return JSONResponse(status_code=200, content={'message': 'Sales Transaction has been added.'})
+
+
+
+@app.put('/updatesales/{sales_id}')
+def update_sales(sales_id: int, sales: UpdateSales):
+    conn = connection()
+    try:
+        row = conn.execute("select * from sales where Id = ?",(sales_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Sales Transaction not found.")
+        update_info = sales.model_dump(exclude_unset=True)
+        if not update_info:
+            raise HTTPException(status_code=400, detail="Nothing to update")
+        if "ProductName" in update_info:
+            product = conn.execute("select * from product where ProductName=?",(sales["ProductName"])).fetchone()
+            if product is None:
+                raise HTTPException(status_code=404, detail='Invalid Product.')
+            update_info["ProductId"] = product["Id"]
+            del update_info["ProductName"]
+
+        set_params = ", ".join(f"{k} = ?" for k in update_info.keys())
+        values = list(update_info.values()) + [sales_id]
+
+        conn.execute(f"UPDATE sales SET {set_params} where Id = ?",(values))
+        conn.commit()
+
+    except sqlite3.IntegrityError as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+    finally:
+        conn.close()
+
+    return JSONResponse(status_code=200, content={'message': 'Sales transaction has been updated.'})
+        
+
