@@ -100,6 +100,8 @@ class UpdateSales(BaseModel):
     @field_validator('ProductName')
     @classmethod
     def valid_product(cls, value):
+        if value is None:
+            return None
         product = value.title()
         return product
 
@@ -309,7 +311,7 @@ def create_sales(sales: AddSales, user = Depends(get_current_user)):
 
 
 
-@app.put('/updatesales/{sales_id}')
+@app.put('/editsales/{sales_id}')
 def update_sales(sales_id: int, sales: UpdateSales):
     conn = connection()
     try:
@@ -320,7 +322,7 @@ def update_sales(sales_id: int, sales: UpdateSales):
         if not update_info:
             raise HTTPException(status_code=400, detail="Nothing to update")
         if "ProductName" in update_info:
-            product = conn.execute("select * from product where ProductName=?",(sales["ProductName"])).fetchone()
+            product = conn.execute("select * from product where ProductName=?",(update_info["ProductName"],)).fetchone()
             if product is None:
                 raise HTTPException(status_code=404, detail='Invalid Product.')
             update_info["ProductId"] = product["Id"]
@@ -329,7 +331,7 @@ def update_sales(sales_id: int, sales: UpdateSales):
         set_params = ", ".join(f"{k} = ?" for k in update_info.keys())
         values = list(update_info.values()) + [sales_id]
 
-        conn.execute(f"UPDATE sales SET {set_params} where Id = ?",(values))
+        conn.execute(f"UPDATE sales SET {set_params} where Id = ?",values)
         conn.commit()
 
     except sqlite3.IntegrityError as e:
