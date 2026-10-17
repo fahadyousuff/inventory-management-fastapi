@@ -39,3 +39,35 @@ BEGIN
 	SET Stock = Stock + OLD.Quantity
 	WHERE Id = OLD.ProductId;
 END;
+
+
+
+
+-- Database Trigger for adjusting negative stock on insert
+CREATE TRIGGER prevent_negative_stock_on_insert
+BEFORE INSERT ON sales
+FOR EACH ROW
+WHEN (SELECT Stock FROM product WHERE Id = NEW.ProductId) < NEW.Quantity
+BEGIN
+    SELECT RAISE(ABORT, 'Insufficient stock for this sale.');
+END;
+
+
+
+
+-- Database Trigger for adjusting negative stock on update
+CREATE TRIGGER prevent_negative_stock_on_update
+BEFORE UPDATE ON sales
+FOR EACH ROW
+WHEN (
+    -- Case A: same product → stock + old qty must cover new qty
+    (NEW.ProductId = OLD.ProductId
+     AND (SELECT Stock FROM product WHERE Id = NEW.ProductId) + OLD.Quantity < NEW.Quantity)
+    OR
+    -- Case B: different product → new product's current stock must cover new qty
+    (NEW.ProductId != OLD.ProductId
+     AND (SELECT Stock FROM product WHERE Id = NEW.ProductId) < NEW.Quantity)
+)
+BEGIN
+    SELECT RAISE(ABORT, 'Insufficient stock for this update.');
+END;
