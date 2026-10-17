@@ -128,7 +128,10 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer_scheme
     finally:
         conn.close()
 
-
+def require_admin(user = Depends(get_current_user)):
+    if not user.get("IsAdmin"):
+        raise HTTPException(status_code=403, detail="Admins only.")
+    return user
 
 
 
@@ -344,3 +347,24 @@ def update_sales(sales_id: int, sales: UpdateSales):
     return JSONResponse(status_code=200, content={'message': 'Sales transaction has been updated.'})
         
 
+@app.delete('/deletesales/{sales_id}')
+def delete_sales(
+    sales_id: Annotated[int, Path(..., gt=0,description="Id of sales transction to delete.")],
+    admin = Depends(require_admin)
+    ):
+    conn = connection()
+    try:
+        row = conn.execute("Select * from sales where Id = ?",(sales_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Sales Transaction not found.")
+        conn.execute("DELETE FROM sales where Id = ?",(sales_id,))
+        conn.commit()
+    
+    except sqlite3.IntegrityError as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+    finally:
+        conn.close()
+
+    return JSONResponse(status_code=200, content={'message': 'Sales Transaction has been deleted.'})
