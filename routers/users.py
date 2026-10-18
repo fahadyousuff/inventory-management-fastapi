@@ -5,7 +5,7 @@ import sqlite3
 import secrets
 
 from database import connection
-from models.user import Users, AddUser, UpdateUser
+from models.user import Users, AddUser, UpdateUser, LoginRequest
 
 router = APIRouter(tags=["users"])
 
