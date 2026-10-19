@@ -5,9 +5,45 @@ import sqlite3
 import secrets
 
 from database import connection
+from security import verify_password
 from models.user import Users, AddUser, UpdateUser, LoginRequest
 
 router = APIRouter(tags=["users"])
+
+
+@router.post("/login")
+def login(payload: LoginRequest):
+    code = payload.usercode.strip().upper()
+    if not code.startswith("U-"):
+        raise HTTPException(status_code=400, detail="Invalid User-code")
+    try:
+        uid = int(code[2:])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid User-code")
+
+    # fetching the user
+    conn = connection()
+    try:
+        row = conn.execute("select Id, name, IsAdmin, ApiToken, PasswordHash from users where Id = ?",(uid,)).fetchone()
+    finally:
+        conn.close()
+
+    if row is None or not row["PasswordHash"]:
+        raise HTTPException(status_code=401, detail="Invalid usercode or password")
+
+    if not verify_password(payload.password, row["PasswordHash"]):
+        raise HTTPException(status_code=401, detail="Invalid usercode or password")
+
+    return {
+        "token": row["ApiToken"],
+        "user": {
+            "Id": row["Id"],
+            "name": row["name"],
+            "IsAdmin": bool(row["IsAdmin"]),
+            "usercode": f"U-{row['Id']}",
+        },
+    }
+
 
 @router.get('/user')
 def users():
