@@ -1,4 +1,3 @@
 # Cache Files
 __pycache__/
 *.py[cod]
-app.py
