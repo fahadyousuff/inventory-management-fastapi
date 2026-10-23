@@ -132,9 +132,9 @@ The token is generated and stored when a user is created via `/createuser`. An i
 
 ## Roadmap
 
-- [ ] Add a **Streamlit** front-end to interact with the API.
+- [x] Add a **Streamlit** front-end to interact with the API.
 - [ ] Add database migrations / init script (tables and triggers).
-- [ ] Protect the remaining user, product, and sales-edit endpoints with authentication.
+- [x] Protect the remaining user, product, and sales-edit endpoints with authentication.
 - [ ] Add reporting endpoints (e.g., sales per user, stock levels).
 - [x] Stock deduction and negative-stock validation on sales (via triggers).
 - [x] Split the app into routers, models, and dependencies.
