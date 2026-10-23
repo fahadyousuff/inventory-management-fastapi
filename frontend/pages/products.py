@@ -35,3 +35,26 @@ with st.form("add_product", clear_on_submit=True):
     name = st.text_input("Product Name")
     stock = st.number_input("Stock", min_value=1, step=1)
     submitted = st.form_submit_button("Add")
+
+if submitted:
+    if not name.strip():
+        st.error("Product name is required.")
+        st.stop()
+
+    try:
+        r = requests.post(
+            f"{BASE}/createproduct",
+            json={"ProductName": name, "Stock": stock},
+            headers=headers,
+            timeout=5,
+        )
+    except requests.RequestException as e:
+        st.error(f"Can't reach the API: {e}")
+        st.stop()
+
+    if r.status_code == 200:
+        st.success(f"Added {name}.")
+        st.rerun()
+    else:
+        detail = r.json().get("detail", r.text) if r.content else r.text
+        st.error(f"{r.status_code}: {detail}")
