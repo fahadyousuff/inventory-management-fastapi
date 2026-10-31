@@ -33,7 +33,7 @@ users = r.json()
 st.dataframe(pd.DataFrame(users), use_container_width=True, hide_index=True)
 
 
-st.divider("")
+st.divider()
 st.subheader("Add Users")
 
 with st.form("add_user", clear_on_submit=True):
@@ -63,3 +63,89 @@ if submitted:
         detail = r.json().get("detail", r.text) if r.content else r.text
         st.error(f"{r.status_code}: {detail}")
 
+st.divider()
+st.subheader("Update User")
+
+if not users:
+    st.error("No User to update.")
+    st.stop()
+
+options = {f"{u["usercode"]}  - {u["name"]}":u for u in users}
+label = st.selectbox("Pick User", list(options.keys()), key="update_pick")
+selected = options[label]
+
+with st.form("update_user", clear_on_submit=True):
+    new_username = st.text_input("Username", value=selected["name"])
+    update_submitted = st.form_submit_button("Save Changes")
+
+if update_submitted:
+    if not new_username.strip():
+        st.error("User required")
+        st.stop()
+
+    payload = {}
+    if new_username != selected["name"]:
+        payload["name"] = new_username
+
+    if not payload:
+        st.error("Nothing to Update")
+        st.stop()
+
+    try:
+        r = requests.put(
+            f"{BASE}/edit/{selected["Id"]}",
+            json=payload,
+            headers=headers,
+            timeout=5
+        )
+    except requests.RequestException as e:
+        st.error(f"The endpoint can not be reached: {e}")
+        st.stop()
+
+    if r.status_code == 200:
+        st.success(f"User {selected["usercode"]} has been updated")
+        st.rerun()
+
+    else:
+        detail = r.json().get("detail", r.text) if r.content else r.text
+        st.error(f"{r.status_code}: {detail}")
+
+st.divider()
+st.subheader("Delete Users")
+
+
+if not users:
+    st.error("Nothing to Delete")
+    st.stop()
+
+
+options_d = {f"{u["usercode"]}  - {u["name"]}":u for u in users}
+label_d = st.selectbox("Pick a product", list(options_d.keys()), key="delete_pick")
+selected_d = options_d[label_d]
+
+with st.form("delete_user", clear_on_submit=True):
+    st.write(f"About to delete: **{selected_d['name']}** (Id {selected_d['usercode']})")
+    confirm = st.checkbox("I'm sure")
+    delete_submitted = st.form_submit_button("Delete")
+
+if delete_submitted:
+    if not confirm:
+        st.error("Tick the confirmation box first..")
+        st.stop()
+
+    try:
+        r = requests.delete(
+            f"{BASE}/delete/{selected_d['Id']}",
+            headers=headers,
+            timeout=5
+        )
+    except requests.RequestException as e:
+        st.error(f"The endpoint can not be reached: {e}")
+        st.stop()
+
+    if r.status_code == 200:
+        st.success(f"{selected_d['name']} has been deleted")
+        st.rerun()
+    else:
+        detail = r.json().get("detail", r.text) if r.content else r.text
+        st.error(f"{r.status_code}: {detail}")
