@@ -74,7 +74,7 @@ def create_user(user: AddUser, _: dict = Depends(require_admin)):
     return JSONResponse(status_code=200, content={'message': 'User has been added.'})
 
 @router.put('/edit/{Id}')
-def update_user(user_id: int, user_update:UpdateUser):
+def update_user(user_id: int, user_update:UpdateUser, _: dict = Depends(require_admin)):
     conn = connection()
     try:
         row = conn.execute("select * from users where Id = ?",(user_id,)).fetchone()
@@ -97,7 +97,8 @@ def update_user(user_id: int, user_update:UpdateUser):
 
 @router.delete('/delete/{user_id}')
 def delete_user(
-                user_id: Annotated[int, Path(..., gt=0,description="Id of the user to delete.")]
+                user_id: Annotated[int, Path(..., gt=0,description="Id of the user to delete.")],
+                _: dict = Depends(require_admin)
                 ):
     conn = connection()
     try:
