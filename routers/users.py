@@ -5,8 +5,9 @@ import sqlite3
 import secrets
 
 from database import connection
-from security import verify_password
+from security import verify_password, hash_password
 from models.user import Users, AddUser, UpdateUser, LoginRequest
+from dependencies import require_admin
 
 router = APIRouter(tags=["users"])
 
@@ -53,15 +54,16 @@ def users():
 
 
 @router.post('/createuser')
-def create_user(user: AddUser):
+def create_user(user: AddUser, _: dict = Depends(require_admin)):
     token = secrets.token_hex(32)
+    password_hash = hash_password(user.password)
     conn = connection()
     try:
         conn.execute("""
-        INSERT INTO users (name, ApiToken)
-        VALUES(?,?)
+        INSERT INTO users (name, ApiToken, PasswordHash)
+        VALUES(?,?,?)
         """,
-        (user.name, token)
+        (user.name, token, password_hash)
         )
         conn.commit()
     except sqlite3.IntegrityError:

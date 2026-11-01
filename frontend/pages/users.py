@@ -33,17 +33,21 @@ st.subheader("Add user")
 
 with st.form("add_user", clear_on_submit=True):
     name = st.text_input("Enter user's name")
+    password = st.text_input("Password", type="password", help="Minimum Character Length: 4")
     submitted = st.form_submit_button("Add")
 
 if submitted:
     if not name.strip():
         st.error("User name is required.")
         st.stop()
+    if len(password) < 4:
+        st.error("Password must be alteast 4 characters..")
+        st.stop()
 
     try:
         r = requests.post(
             f"{BASE}/createuser",
-            json={"name": name},
+            json={"name": name, "password": password},
             headers=headers,
             timeout=5,
         )

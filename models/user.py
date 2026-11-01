@@ -19,6 +19,7 @@ class Users(BaseModel):
 
 class AddUser(BaseModel):
     name: Annotated[str, Field(..., description="Input the name of the user")]
+    password: Annotated[str, Field(..., min_length=4, description="Login Password")]
 
     @field_validator('name')
     @classmethod
