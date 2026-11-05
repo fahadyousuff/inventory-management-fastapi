@@ -13,8 +13,20 @@ router = APIRouter(tags=["sales"])
 @router.get('/sales')
 def show_sales():
     conn = connection()
-    rows = conn.execute("select * from sales").fetchall()
-    return [Sales(**dict(row)).model_dump() for row in rows]
+    try:
+        rows = conn.execute("""
+            SELECT s.Id, s.Quantity,
+                    s.ProductId, p.ProductName,
+                    s.UserId, u.name AS UserName
+                FROM sales s
+                JOIN product p ON s.ProductId = p.Id
+                JOIN users   u ON s.UserId    = u.Id
+                ORDER BY s.Id DESC
+        
+        """).fetchall()
+    finally:
+        conn.close()
+    return [dict(row) for row in rows]
 
 
 @router.post('/addsales')
@@ -40,7 +52,9 @@ def create_sales(sales: AddSales, user = Depends(get_current_user)):
 
 
 @router.put('/editsales/{sales_id}')
-def update_sales(sales_id: int, sales: UpdateSales):
+def update_sales(sales_id: int, 
+                 sales: UpdateSales,
+                 _: dict = Depends(require_admin)):
     conn = connection()
     try:
         row = conn.execute("select * from sales where Id = ?",(sales_id,)).fetchone()
